@@ -9,9 +9,7 @@ Supabase PostgreSQL and packaged as one Vercel Node.js Function.
 - Deployed API: [https://inventory-reservation-api-phi.vercel.app](https://inventory-reservation-api-phi.vercel.app)
 - Swagger UI: [https://inventory-reservation-api-phi.vercel.app/docs/](https://inventory-reservation-api-phi.vercel.app/docs/)
 - OpenAPI JSON: [https://inventory-reservation-api-phi.vercel.app/openapi.json](https://inventory-reservation-api-phi.vercel.app/openapi.json)
-- Demo video: **Pending recording**
-
-Replace the demo-video placeholder with its public URL before final submission.
+- Demo video: [**Video recording**](https://drive.google.com/file/d/15xTS79M9ca0K4G-c8y69rf8KJMFFNFWp/view?usp=sharing)
 
 ## Architecture and Consistency
 
