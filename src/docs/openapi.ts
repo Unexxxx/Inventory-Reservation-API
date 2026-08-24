@@ -16,7 +16,7 @@ export const openApiDocument = {
     version: '1.0.0',
     description: 'Atomic, retry-safe single-item inventory reservations.'
   },
-  servers: [{ url: 'http://localhost:3000', description: 'Local development' }],
+  servers: [{ url: '/', description: 'Current server' }],
   tags: [{ name: 'Items' }, { name: 'Reservations' }, { name: 'Documentation' }],
   paths: {
     '/items': { post: {
