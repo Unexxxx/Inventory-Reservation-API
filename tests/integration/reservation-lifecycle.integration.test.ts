@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { cleanDatabase, closeIntegrationDatabase, integrationSql, testDatabaseUrl } from './helpers/database.js';
 
 async function pendingReservation(minutes = 15): Promise<{ itemId: string; reservationId: string }> {
-  const { item } = (await integrationSql!<{ item: { id: string } }[]>`select public.create_item_atomic(5) item`)[0]!;
+  const { item } = (await integrationSql!<{ item: { id: string } }[]>`select public.create_item_atomic('Lifecycle test', 5) item`)[0]!;
   const { result } = (await integrationSql!<{ result: { reservation: { id: string } } }[]>`
     select public.create_reservation_atomic(${item.id}, 'customer', 2, clock_timestamp() + (${minutes} * interval '1 minute'), ${randomUUID()}, ${randomBytes(32).toString('hex')}) result`)[0]!;
   return { itemId: item.id, reservationId: result.reservation.id };
@@ -30,8 +30,8 @@ describe.skipIf(!testDatabaseUrl)('reservation lifecycle', () => {
   });
 
   it('drains expired reservations in bounded batches', async () => {
-    const ids = await Promise.all([pendingReservation(), pendingReservation(), pendingReservation()]);
-    await integrationSql!`update public.reservations set expires_at = clock_timestamp() - interval '1 second' where id in ${integrationSql!(ids.map((value) => value.reservationId))}`;
+    await Promise.all([pendingReservation(0.002), pendingReservation(0.002), pendingReservation(0.002)]);
+    await new Promise((resolve) => setTimeout(resolve, 250));
     const first = (await integrationSql!<{ result: { expiredCount: number; hasMore: boolean } }[]>`select public.expire_reservations_atomic(2) result`)[0]!.result;
     const second = (await integrationSql!<{ result: { expiredCount: number; hasMore: boolean } }[]>`select public.expire_reservations_atomic(2) result`)[0]!.result;
     expect(first).toEqual({ expiredCount: 2, hasMore: true });

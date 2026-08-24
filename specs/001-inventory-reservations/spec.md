@@ -11,7 +11,7 @@ expiration, documentation, deployment, and concurrency verification."
 
 ### Session 2026-08-19
 
-- Q: How must reservation creation handle client retries after an ambiguous response? → A: Require an `Idempotency-Key`; identical retries return the original reservation.
+- Q: How must reservation creation handle client retries after an ambiguous response? → A: Accept an optional `Idempotency-Key`; when supplied, identical retries return the original reservation.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -167,7 +167,7 @@ the repository instructions from a clean environment through concurrency verific
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST allow an API consumer to create an item with a
+- **FR-001**: The system MUST allow an API consumer to create a named item with a
   server-generated identifier and a strictly positive whole-number initial quantity.
 - **FR-002**: The system MUST return an item's total quantity, available quantity,
   quantity held by pending unexpired reservations, and confirmed quantity.
@@ -242,8 +242,8 @@ the repository instructions from a clean environment through concurrency verific
 - **FR-030**: Automated verification MUST cover API contracts, inventory calculations,
   all legal and illegal lifecycle transitions, retry behavior, expiration boundaries,
   and concurrent attempts that would oversell without coordination.
-- **FR-031**: Reservation creation MUST require a non-blank `Idempotency-Key` request
-  header. The key MUST identify at most one creation request: an identical retry MUST
+- **FR-031**: Reservation creation MUST accept an optional non-blank `Idempotency-Key`
+  request header. When supplied, the key MUST identify at most one creation request: an identical retry MUST
   return the original reservation and HTTP 200 without applying another hold, while
   reuse with different item, customer, quantity, or expiration input MUST return HTTP
   409 without changing inventory.
@@ -256,7 +256,7 @@ the repository instructions from a clean environment through concurrency verific
 
 ### Key Entities
 
-- **Item**: A reservable inventory record with a unique identifier and total quantity.
+- **Item**: A reservable inventory record with a unique identifier, name, and total quantity.
   Its status derives available, held, and confirmed quantities from durable reservation
   outcomes.
 - **Reservation**: A temporary or completed allocation associated with exactly one item

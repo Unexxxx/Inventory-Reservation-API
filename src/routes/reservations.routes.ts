@@ -3,7 +3,6 @@ import * as controller from '../controllers/reservations.controller.js';
 import { validate } from '../middleware/validate.js';
 import {
   createReservationSchema,
-  expireReservationsSchema,
   idempotencyHeadersSchema,
   reservationIdParamsSchema
 } from '../validation/reservations.schemas.js';
@@ -15,7 +14,6 @@ reservationsRouter.post(
   validate('body', createReservationSchema),
   controller.createReservation
 );
-reservationsRouter.post('/expire', validate('body', expireReservationsSchema), controller.expireReservations);
 reservationsRouter.post(
   '/:reservationId/confirm',
   validate('params', reservationIdParamsSchema),

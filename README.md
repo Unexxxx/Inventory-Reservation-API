@@ -5,6 +5,7 @@ Supabase PostgreSQL and packaged as one Vercel Node.js Function.
 
 ## Submission Links
 
+- GitHub repository: [https://github.com/Unexxxx/Inventory-Reservation-API](https://github.com/Unexxxx/Inventory-Reservation-API)
 - Deployed API: [https://inventory-reservation-api-phi.vercel.app](https://inventory-reservation-api-phi.vercel.app)
 - Swagger UI: [https://inventory-reservation-api-phi.vercel.app/docs/](https://inventory-reservation-api-phi.vercel.app/docs/)
 - OpenAPI JSON: [https://inventory-reservation-api-phi.vercel.app/openapi.json](https://inventory-reservation-api-phi.vercel.app/openapi.json)
@@ -35,12 +36,12 @@ expiration cannot apply the same inventory effect twice.
 
 | Method | Path | Success | Purpose |
 |---|---|---:|---|
-| `POST` | `/items` | 201 | Create an item |
-| `GET` | `/items/{itemId}` | 200 | Retrieve inventory status |
-| `POST` | `/reservations` | 201/200 | Create or replay a reservation |
-| `POST` | `/reservations/{reservationId}/confirm` | 200 | Confirm a reservation |
-| `POST` | `/reservations/{reservationId}/cancel` | 200 | Cancel a reservation |
-| `POST` | `/reservations/expire` | 200 | Expire one bounded batch |
+| `POST` | `/v1/items` | 201 | Create a named item |
+| `GET` | `/v1/items/{itemId}` | 200 | Retrieve inventory status |
+| `POST` | `/v1/reservations` | 201/200 | Create or replay a reservation |
+| `POST` | `/v1/reservations/{reservationId}/confirm` | 200 | Confirm a reservation |
+| `POST` | `/v1/reservations/{reservationId}/cancel` | 200 | Cancel a reservation |
+| `POST` | `/v1/maintenance/expire-reservations` | 200 | Expire one bounded batch |
 
 Production [Swagger UI](https://inventory-reservation-api-phi.vercel.app/docs/) is at
 `/docs`; authoritative [OpenAPI JSON](https://inventory-reservation-api-phi.vercel.app/openapi.json)
@@ -53,18 +54,23 @@ Prerequisites are Node.js 24.x, npm, and a Supabase project.
 
 1. In Supabase **Connect**, copy the transaction-mode pooler details (normally port
    `6543`). The client already disables prepared statements as transaction mode requires.
-2. In **SQL Editor**, paste and run
-   `supabase/migrations/001_inventory_reservations.sql` once on a clean database. It
+2. For a new/clean database, in **SQL Editor**, paste and run
+   `supabase/migrations/001_inventory_reservations.sql` once. It
    creates the schema, `inventory_api` NOLOGIN role, indexes, functions, revocations,
    and grants in one transaction.
-3. As an owner, provision the separate runtime login without committing its password:
+3. If you already ran migration `001` before item names were added, instead paste and
+   run `supabase/migrations/002_add_item_name.sql`. It preserves existing data, assigns
+   readable placeholder names to existing items, adds the constraint, and updates the
+   database functions. Do not run `001` again on an existing database.
+4. As an owner, provision the separate runtime login without committing its password
+   (skip this if you already created it):
 
    ```sql
    create role inventory_api_login login password 'GENERATE_A_STRONG_SECRET';
    grant inventory_api to inventory_api_login;
    ```
 
-4. Build the pooler URL with that login. Never use `postgres`, `supabase_admin`, or a
+5. Build the pooler URL with that login. Never use `postgres`, `supabase_admin`, or a
    migration-owner credential at runtime.
 
 The migration targets a clean database and is not advertised as rerunnable. Rehearse it
@@ -84,7 +90,7 @@ RESERVATION_TTL_MINUTES=15
 ```
 
 `DATABASE_URL` is required and secret. `PORT` defaults to 3000. The TTL must be a
-positive whole number and applies when `expiresAt` is omitted.
+positive whole number and applies when `expires_at` is omitted.
 
 ```bash
 npm run typecheck
@@ -95,22 +101,25 @@ npm run dev
 ## Smoke Scenario
 
 ```bash
-curl -X POST http://localhost:3000/items \
-  -H 'Content-Type: application/json' -d '{"initialQuantity":10}'
+curl -X POST http://localhost:3000/v1/items \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Demo item","initial_quantity":10}'
 
-curl -X POST http://localhost:3000/reservations \
+curl -X POST http://localhost:3000/v1/reservations \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: demo-customer-1-reservation-1' \
-  -d '{"itemId":"ITEM_UUID","customerId":"customer-1","quantity":4}'
+  -d '{"item_id":"ITEM_UUID","customer_id":"customer-1","quantity":4}'
 
-curl http://localhost:3000/items/ITEM_UUID
-curl -X POST http://localhost:3000/reservations/RESERVATION_UUID/confirm
-curl -X POST http://localhost:3000/reservations/RESERVATION_UUID/confirm
-curl -X POST http://localhost:3000/reservations/expire \
+curl http://localhost:3000/v1/items/ITEM_UUID
+curl -X POST http://localhost:3000/v1/reservations/RESERVATION_UUID/confirm
+curl -X POST http://localhost:3000/v1/reservations/RESERVATION_UUID/confirm
+curl -X POST http://localhost:3000/v1/maintenance/expire-reservations \
   -H 'Content-Type: application/json' -d '{"limit":500}'
 ```
 
-The first reservation returns 201. Repeating the same key and body returns 200 with the
+`Idempotency-Key` is optional for assignment-compatible clients. Supplying it is
+recommended when a client may retry an ambiguous creation request. The first reservation
+returns 201. Repeating the same key and body returns 200 with the
 original reservation; changed input with that key returns 409. A 4-unit hold reports
 `10/6/4/0`; after confirmation it reports `10/6/0/4`.
 
@@ -148,9 +157,12 @@ fails, or retries apply more than one effect. Generate the contract snapshot wit
 1. Import this repository into Vercel.
 2. Add `DATABASE_URL` and `RESERVATION_TTL_MINUTES` as environment variables.
 3. Select Node.js 24.x. `vercel.json` routes all paths to `api/index.ts`.
-4. Deploy and smoke-test `/openapi.json`, `/docs`, and every lifecycle operation.
+4. Deploy and smoke-test `/openapi.json`, `/docs`, and every `/v1` lifecycle operation.
 5. Confirm the database URL uses the dedicated runtime login.
-6. Replace the pending deployment and demo values above.
+6. Record a 5–10 minute demo showing local startup, Swagger, an item with quantity 5,
+   reservation creation, cancellation or expiration restoring availability, and the
+   corresponding Supabase rows. Upload it with public/link access and replace the
+   pending demo value above.
 
 ## Assumptions, Limitations, and Trade-offs
 

@@ -31,7 +31,7 @@ RESERVATION_TTL_MINUTES=15
 `DATABASE_URL` is required and secret. Startup validation must reject Supabase
 `postgres`/migration-owner usernames and accept only the provisioned runtime login.
 `PORT` is local-only. The TTL must be a positive whole number and controls the expiration
-used when callers omit `expiresAt`.
+used when callers omit `expires_at`.
 
 ## 3. Install and Run
 
@@ -55,25 +55,25 @@ Open `http://localhost:3000/docs` for Swagger UI.
 Create an item:
 
 ```bash
-curl -X POST http://localhost:3000/items \
+curl -X POST http://localhost:3000/v1/items \
   -H 'Content-Type: application/json' \
-  -d '{"initialQuantity":10}'
+  -d '{"name":"Demo item","initial_quantity":10}'
 ```
 
 Use the returned item ID to create a reservation:
 
 ```bash
-curl -X POST http://localhost:3000/reservations \
+curl -X POST http://localhost:3000/v1/reservations \
   -H 'Content-Type: application/json' \
   -H 'Idempotency-Key: demo-customer-1-reservation-1' \
-  -d '{"itemId":"ITEM_UUID","customerId":"customer-1","quantity":4}'
+  -d '{"item_id":"ITEM_UUID","customer_id":"customer-1","quantity":4}'
 ```
 
 Repeat the exact request and verify HTTP 200 returns the same reservation. Change the
 quantity while reusing the key and verify HTTP 409. Retrieve item status:
 
 ```bash
-curl http://localhost:3000/items/ITEM_UUID
+curl http://localhost:3000/v1/items/ITEM_UUID
 ```
 
 Expected quantities are total 10, available 6, held 4, confirmed 0.
@@ -81,13 +81,13 @@ Expected quantities are total 10, available 6, held 4, confirmed 0.
 Confirm twice and verify the second response is unchanged:
 
 ```bash
-curl -X POST http://localhost:3000/reservations/RESERVATION_UUID/confirm
-curl -X POST http://localhost:3000/reservations/RESERVATION_UUID/confirm
+curl -X POST http://localhost:3000/v1/reservations/RESERVATION_UUID/confirm
+curl -X POST http://localhost:3000/v1/reservations/RESERVATION_UUID/confirm
 ```
 
 Expected final quantities are total 10, available 6, held 0, confirmed 4.
 
-For expiration, call `POST /reservations/expire` repeatedly until the response returns
+For expiration, call `POST /v1/maintenance/expire-reservations` repeatedly until the response returns
 `hasMore: false`; each call processes at most the requested batch limit.
 
 ## 5. Required Automated Verification

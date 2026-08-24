@@ -3,7 +3,10 @@ import * as itemsService from '../services/items.service.js';
 
 export async function createItem(request: Request, response: Response, next: NextFunction): Promise<void> {
   try {
-    response.status(201).json(await itemsService.createItem(request.body.initialQuantity as number));
+    response.status(201).json(await itemsService.createItem(
+      request.body.name as string,
+      request.body.initialQuantity as number
+    ));
   } catch (error) { next(error); }
 }
 
