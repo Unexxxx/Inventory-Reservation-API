@@ -5,10 +5,12 @@ Supabase PostgreSQL and packaged as one Vercel Node.js Function.
 
 ## Submission Links
 
-- Deployed API: **Pending deployment**
+- Deployed API: [https://inventory-reservation-api-phi.vercel.app](https://inventory-reservation-api-phi.vercel.app)
+- Swagger UI: [https://inventory-reservation-api-phi.vercel.app/docs/](https://inventory-reservation-api-phi.vercel.app/docs/)
+- OpenAPI JSON: [https://inventory-reservation-api-phi.vercel.app/openapi.json](https://inventory-reservation-api-phi.vercel.app/openapi.json)
 - Demo video: **Pending recording**
 
-Replace both external-deliverable placeholders with real public URLs before submission.
+Replace the demo-video placeholder with its public URL before final submission.
 
 ## Architecture and Consistency
 
@@ -40,7 +42,9 @@ expiration cannot apply the same inventory effect twice.
 | `POST` | `/reservations/{reservationId}/cancel` | 200 | Cancel a reservation |
 | `POST` | `/reservations/expire` | 200 | Expire one bounded batch |
 
-Swagger UI is at `/docs`; authoritative OpenAPI JSON is at `/openapi.json`. Errors use
+Production [Swagger UI](https://inventory-reservation-api-phi.vercel.app/docs/) is at
+`/docs`; authoritative [OpenAPI JSON](https://inventory-reservation-api-phi.vercel.app/openapi.json)
+is at `/openapi.json`. Errors use
 `{ "error": { "code": "...", "message": "...", "details": {} } }`.
 
 ## Supabase Setup and Migration
