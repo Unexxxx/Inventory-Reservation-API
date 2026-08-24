@@ -5,7 +5,7 @@ export async function createReservation(request: Request, response: Response, ne
   try {
     const result = await reservationsService.createReservation(
       request.body,
-      request.headers['idempotency-key'] as string
+      request.headers['idempotency-key'] as string | undefined
     );
     response.status(result.replayed ? 200 : 201).json(result.reservation);
   } catch (error) { next(error); }

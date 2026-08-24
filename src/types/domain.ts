@@ -2,6 +2,7 @@ export type ReservationStatus = 'pending' | 'confirmed' | 'cancelled' | 'expired
 
 export interface ItemInventory {
   id: string;
+  name: string;
   totalQuantity: number;
   availableQuantity: number;
   heldQuantity: number;

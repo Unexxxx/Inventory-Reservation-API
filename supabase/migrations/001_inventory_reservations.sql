@@ -14,6 +14,7 @@ alter default privileges in schema public revoke execute on functions from publi
 
 create table public.items (
   id uuid primary key default gen_random_uuid(),
+  name varchar(255) not null check (length(btrim(name)) between 1 and 255),
   total_quantity bigint not null check (total_quantity > 0),
   created_at timestamptz not null default clock_timestamp()
 );
@@ -52,6 +53,7 @@ set search_path = ''
 as $$
   select jsonb_build_object(
     'id', i.id,
+    'name', i.name,
     'totalQuantity', i.total_quantity,
     'availableQuantity', i.total_quantity
       - coalesce(sum(r.quantity) filter (where r.status = 'confirmed'), 0)
@@ -66,7 +68,7 @@ as $$
   group by i.id;
 $$;
 
-create function public.create_item_atomic(p_total_quantity bigint)
+create function public.create_item_atomic(p_name text, p_total_quantity bigint)
 returns jsonb
 language plpgsql
 security definer
@@ -75,12 +77,16 @@ as $$
 declare
   v_item public.items;
 begin
+  if p_name is null or length(btrim(p_name)) not between 1 and 255 then
+    raise exception using errcode = '22023', message = 'invalid item name';
+  end if;
   if p_total_quantity is null or p_total_quantity <= 0 then
     raise exception using errcode = '22023', message = 'invalid total quantity';
   end if;
-  insert into public.items(total_quantity) values (p_total_quantity) returning * into v_item;
+  insert into public.items(name, total_quantity)
+    values (btrim(p_name), p_total_quantity) returning * into v_item;
   return jsonb_build_object(
-    'id', v_item.id, 'totalQuantity', v_item.total_quantity,
+    'id', v_item.id, 'name', v_item.name, 'totalQuantity', v_item.total_quantity,
     'availableQuantity', v_item.total_quantity, 'heldQuantity', 0,
     'confirmedQuantity', 0, 'createdAt', v_item.created_at
   );
@@ -251,14 +257,14 @@ end;
 $$;
 
 revoke execute on function public.get_item_inventory(uuid) from public;
-revoke execute on function public.create_item_atomic(bigint) from public;
+revoke execute on function public.create_item_atomic(text,bigint) from public;
 revoke execute on function public.create_reservation_atomic(uuid,text,bigint,timestamptz,text,text) from public;
 revoke execute on function public.confirm_reservation_atomic(uuid) from public;
 revoke execute on function public.cancel_reservation_atomic(uuid) from public;
 revoke execute on function public.expire_reservations_atomic(integer) from public;
 
 grant execute on function public.get_item_inventory(uuid) to inventory_api;
-grant execute on function public.create_item_atomic(bigint) to inventory_api;
+grant execute on function public.create_item_atomic(text,bigint) to inventory_api;
 grant execute on function public.create_reservation_atomic(uuid,text,bigint,timestamptz,text,text) to inventory_api;
 grant execute on function public.confirm_reservation_atomic(uuid) to inventory_api;
 grant execute on function public.cancel_reservation_atomic(uuid) to inventory_api;

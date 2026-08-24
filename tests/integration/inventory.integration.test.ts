@@ -7,7 +7,7 @@ describe.skipIf(!testDatabaseUrl)('inventory database functions', () => {
 
   it('creates an item and derives held inventory', async () => {
     const key = randomUUID();
-    const { item } = (await integrationSql!<{ item: Record<string, unknown> }[]>`select public.create_item_atomic(10) item`)[0]!;
+    const { item } = (await integrationSql!<{ item: Record<string, unknown> }[]>`select public.create_item_atomic('Inventory test', 10) item`)[0]!;
     const result = await integrationSql!<{ result: Record<string, unknown> }[]>`
       select public.create_reservation_atomic(${item.id as string}, 'customer', 4, clock_timestamp() + interval '15 minutes', ${key}, ${'a'.repeat(64)}) result`;
     expect(result[0]?.result.outcome).toBe('created');
@@ -17,7 +17,7 @@ describe.skipIf(!testDatabaseUrl)('inventory database functions', () => {
 
   it('serializes 100 contenders without overselling', async () => {
     const prefix = randomUUID();
-    const { item } = (await integrationSql!<{ item: Record<string, unknown> }[]>`select public.create_item_atomic(10) item`)[0]!;
+    const { item } = (await integrationSql!<{ item: Record<string, unknown> }[]>`select public.create_item_atomic('Inventory test', 10) item`)[0]!;
     const outcomes = await Promise.all(Array.from({ length: 100 }, (_, index) => integrationSql!<{ result: { outcome: string } }[]>`
       select public.create_reservation_atomic(${item.id as string}, ${`customer-${index}`}, 1, clock_timestamp() + interval '15 minutes', ${`${prefix}-${index}`}, ${index.toString(16).padStart(64, '0')}) result`
     ));
@@ -28,7 +28,7 @@ describe.skipIf(!testDatabaseUrl)('inventory database functions', () => {
 
   it('makes concurrent identical first use resolve to one reservation', async () => {
     const key = randomUUID();
-    const { item } = (await integrationSql!<{ item: Record<string, unknown> }[]>`select public.create_item_atomic(2) item`)[0]!;
+    const { item } = (await integrationSql!<{ item: Record<string, unknown> }[]>`select public.create_item_atomic('Inventory test', 2) item`)[0]!;
     const call = () => integrationSql!<{ result: { outcome: string; reservation: { id: string } } }[]>`
       select public.create_reservation_atomic(${item.id as string}, 'customer', 1, clock_timestamp() + interval '15 minutes', ${key}, ${'b'.repeat(64)}) result`;
     const rows = (await Promise.all([call(), call()])).flat();
@@ -37,7 +37,7 @@ describe.skipIf(!testDatabaseUrl)('inventory database functions', () => {
   });
 
   it('rejects insufficient inventory and conflicting idempotency reuse without state change', async () => {
-    const { item } = (await integrationSql!<{ item: { id: string } }[]>`select public.create_item_atomic(2) item`)[0]!;
+    const { item } = (await integrationSql!<{ item: { id: string } }[]>`select public.create_item_atomic('Inventory test', 2) item`)[0]!;
     const firstKey = randomUUID();
     await integrationSql!`select public.create_reservation_atomic(${item.id}, 'customer', 2, clock_timestamp() + interval '15 minutes', ${firstKey}, ${'c'.repeat(64)})`;
     const insufficient = (await integrationSql!<{ result: { outcome: string } }[]>`
@@ -51,7 +51,7 @@ describe.skipIf(!testDatabaseUrl)('inventory database functions', () => {
   });
 
   it('rejects an expiration at database time and rolls back a surrounding failed transaction', async () => {
-    const { item } = (await integrationSql!<{ item: { id: string } }[]>`select public.create_item_atomic(2) item`)[0]!;
+    const { item } = (await integrationSql!<{ item: { id: string } }[]>`select public.create_item_atomic('Inventory test', 2) item`)[0]!;
     const invalid = (await integrationSql!<{ result: { outcome: string } }[]>`
       select public.create_reservation_atomic(${item.id}, 'customer', 1, clock_timestamp(), ${randomUUID()}, ${'f'.repeat(64)}) result`)[0]!.result;
     expect(invalid.outcome).toBe('invalid_expiration');

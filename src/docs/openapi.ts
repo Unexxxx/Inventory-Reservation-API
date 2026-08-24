@@ -19,7 +19,7 @@ export const openApiDocument = {
   servers: [{ url: '/', description: 'Current server' }],
   tags: [{ name: 'Items' }, { name: 'Reservations' }, { name: 'Documentation' }],
   paths: {
-    '/items': { post: {
+    '/v1/items': { post: {
       tags: ['Items'], operationId: 'createItem', summary: 'Create an item with its initial quantity',
       requestBody: { required: true, ...jsonContent(reference('CreateItemRequest')) },
       responses: {
@@ -27,7 +27,7 @@ export const openApiDocument = {
         '400': responseReference('ValidationError'), '500': responseReference('InternalError')
       }
     } },
-    '/items/{itemId}': { get: {
+    '/v1/items/{itemId}': { get: {
       tags: ['Items'], operationId: 'getItemInventory', summary: 'Get current inventory status',
       parameters: [{ $ref: '#/components/parameters/ItemId' }],
       responses: {
@@ -36,7 +36,7 @@ export const openApiDocument = {
         '500': responseReference('InternalError')
       }
     } },
-    '/reservations': { post: {
+    '/v1/reservations': { post: {
       tags: ['Reservations'], operationId: 'createReservation', summary: 'Create a temporary reservation atomically',
       parameters: [{ $ref: '#/components/parameters/IdempotencyKey' }],
       requestBody: { required: true, ...jsonContent(reference('CreateReservationRequest')) },
@@ -48,7 +48,7 @@ export const openApiDocument = {
         '500': responseReference('InternalError')
       }
     } },
-    '/reservations/{reservationId}/confirm': { post: {
+    '/v1/reservations/{reservationId}/confirm': { post: {
       tags: ['Reservations'], operationId: 'confirmReservation', summary: 'Confirm a pending unexpired reservation',
       parameters: [{ $ref: '#/components/parameters/ReservationId' }],
       responses: {
@@ -58,7 +58,7 @@ export const openApiDocument = {
         '500': responseReference('InternalError')
       }
     } },
-    '/reservations/{reservationId}/cancel': { post: {
+    '/v1/reservations/{reservationId}/cancel': { post: {
       tags: ['Reservations'], operationId: 'cancelReservation', summary: 'Cancel a pending reservation',
       parameters: [{ $ref: '#/components/parameters/ReservationId' }],
       responses: {
@@ -68,7 +68,7 @@ export const openApiDocument = {
         '500': responseReference('InternalError')
       }
     } },
-    '/reservations/expire': { post: {
+    '/v1/maintenance/expire-reservations': { post: {
       tags: ['Reservations'], operationId: 'expireReservations', summary: 'Expire one bounded batch of overdue reservations',
       requestBody: { required: false, ...jsonContent(reference('ExpireReservationsRequest')) },
       responses: {
@@ -89,21 +89,22 @@ export const openApiDocument = {
     parameters: {
       ItemId: { name: 'itemId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
       ReservationId: { name: 'reservationId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
-      IdempotencyKey: { name: 'Idempotency-Key', in: 'header', required: true, description: 'Unique key for one logical creation request.', schema: { type: 'string', minLength: 1, maxLength: 255 } }
+      IdempotencyKey: { name: 'Idempotency-Key', in: 'header', required: false, description: 'Optional retry key for one logical creation request. The server generates one when omitted.', schema: { type: 'string', minLength: 1, maxLength: 255 } }
     },
     schemas: {
-      CreateItemRequest: { type: 'object', additionalProperties: false, required: ['initialQuantity'], properties: {
-        initialQuantity: { type: 'integer', format: 'int64', minimum: 1, maximum: Number.MAX_SAFE_INTEGER }
+      CreateItemRequest: { type: 'object', additionalProperties: false, required: ['name', 'initial_quantity'], properties: {
+        name: { type: 'string', minLength: 1, maxLength: 255 },
+        initial_quantity: { type: 'integer', format: 'int64', minimum: 1, maximum: Number.MAX_SAFE_INTEGER }
       } },
-      ItemInventory: { type: 'object', additionalProperties: false, required: ['id', 'totalQuantity', 'availableQuantity', 'heldQuantity', 'confirmedQuantity', 'createdAt'], properties: {
-        id: { type: 'string', format: 'uuid' }, totalQuantity: { type: 'integer', minimum: 1 },
+      ItemInventory: { type: 'object', additionalProperties: false, required: ['id', 'name', 'totalQuantity', 'availableQuantity', 'heldQuantity', 'confirmedQuantity', 'createdAt'], properties: {
+        id: { type: 'string', format: 'uuid' }, name: { type: 'string', minLength: 1, maxLength: 255 }, totalQuantity: { type: 'integer', minimum: 1 },
         availableQuantity: { type: 'integer', minimum: 0 }, heldQuantity: { type: 'integer', minimum: 0 },
         confirmedQuantity: { type: 'integer', minimum: 0 }, createdAt: { type: 'string', format: 'date-time' }
       } },
-      CreateReservationRequest: { type: 'object', additionalProperties: false, required: ['itemId', 'customerId', 'quantity'], properties: {
-        itemId: { type: 'string', format: 'uuid' }, customerId: { type: 'string', minLength: 1, maxLength: 255 },
+      CreateReservationRequest: { type: 'object', additionalProperties: false, required: ['item_id', 'customer_id', 'quantity'], properties: {
+        item_id: { type: 'string', format: 'uuid' }, customer_id: { type: 'string', minLength: 1, maxLength: 255 },
         quantity: { type: 'integer', format: 'int64', minimum: 1, maximum: Number.MAX_SAFE_INTEGER },
-        expiresAt: { type: 'string', format: 'date-time', description: 'Must be later than server time; defaults to the configured TTL.' }
+        expires_at: { type: 'string', format: 'date-time', description: 'Must be later than server time; defaults to the configured TTL.' }
       } },
       ReservationStatus: { type: 'string', enum: ['pending', 'confirmed', 'cancelled', 'expired'] },
       Reservation: { type: 'object', additionalProperties: false, required: ['id', 'itemId', 'customerId', 'quantity', 'status', 'createdAt', 'expiresAt'], properties: {

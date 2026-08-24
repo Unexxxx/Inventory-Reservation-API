@@ -3,14 +3,19 @@ import { z } from 'zod';
 const safePositiveInteger = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
 export const createReservationSchema = z.object({
-  itemId: z.string().uuid(),
-  customerId: z.string().trim().min(1).max(255),
+  item_id: z.string().uuid(),
+  customer_id: z.string().trim().min(1).max(255),
   quantity: safePositiveInteger,
-  expiresAt: z.string().datetime({ offset: true }).optional()
-}).strict();
+  expires_at: z.string().datetime({ offset: true }).optional()
+}).strict().transform(({ item_id, customer_id, quantity, expires_at }) => ({
+  itemId: item_id,
+  customerId: customer_id,
+  quantity,
+  expiresAt: expires_at
+}));
 
 export const idempotencyHeadersSchema = z.object({
-  'idempotency-key': z.string().trim().min(1).max(255)
+  'idempotency-key': z.string().trim().min(1).max(255).optional()
 }).passthrough();
 
 export const reservationIdParamsSchema = z.object({

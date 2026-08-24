@@ -10,7 +10,16 @@ import {
 
 describe('request validation', () => {
   it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, '1'])('rejects invalid item quantity %s', (value) => {
-    expect(createItemSchema.safeParse({ initialQuantity: value }).success).toBe(false);
+    expect(createItemSchema.safeParse({ name: 'Item', initial_quantity: value }).success).toBe(false);
+  });
+
+  it('accepts and normalizes assignment field names', () => {
+    expect(createItemSchema.parse({ name: ' Demo ', initial_quantity: 5 })).toEqual({ name: 'Demo', initialQuantity: 5 });
+    expect(createReservationSchema.parse({
+      item_id: '123e4567-e89b-42d3-a456-426614174000', customer_id: ' customer ', quantity: 1
+    })).toMatchObject({
+      itemId: '123e4567-e89b-42d3-a456-426614174000', customerId: 'customer', quantity: 1
+    });
   });
 
   it('rejects unknown fields and malformed reservation input', () => {
@@ -19,13 +28,14 @@ describe('request validation', () => {
 
   it('accepts an offset timestamp and trims customer IDs', () => {
     const result = createReservationSchema.parse({
-      itemId: '123e4567-e89b-42d3-a456-426614174000', customerId: ' customer ', quantity: 1,
-      expiresAt: '2030-01-01T00:00:00+08:00'
+      item_id: '123e4567-e89b-42d3-a456-426614174000', customer_id: ' customer ', quantity: 1,
+      expires_at: '2030-01-01T00:00:00+08:00'
     });
     expect(result.customerId).toBe('customer');
   });
 
   it('enforces idempotency key, UUID, and expiration limit boundaries', () => {
+    expect(idempotencyHeadersSchema.safeParse({}).success).toBe(true);
     expect(idempotencyHeadersSchema.safeParse({ 'idempotency-key': ' ' }).success).toBe(false);
     expect(idempotencyHeadersSchema.safeParse({ 'idempotency-key': 'x'.repeat(256) }).success).toBe(false);
     expect(reservationIdParamsSchema.safeParse({ reservationId: 'nope' }).success).toBe(false);

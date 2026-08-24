@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { getEnvironment } from '../config/env.js';
 import * as reservationsRepository from '../db/repositories/reservations.repository.js';
 import { AppError, errorCodes, errorForOutcome } from '../errors/app-error.js';
@@ -22,7 +22,7 @@ function requireReservation(result: ReservationDatabaseResult): Reservation {
 
 export async function createReservation(
   input: CreateReservationInput,
-  idempotencyKey: string
+  idempotencyKey?: string
 ): Promise<{ reservation: Reservation; replayed: boolean }> {
   const now = Date.now();
   const expiresAt = input.expiresAt
@@ -30,7 +30,7 @@ export async function createReservation(
     : new Date(now + getEnvironment().RESERVATION_TTL_MINUTES * 60_000);
   if (expiresAt.getTime() <= now) {
     throw new AppError(400, errorCodes.VALIDATION_ERROR, 'Request validation failed.', {
-      fields: { expiresAt: 'Expiration must be later than server time.' }
+      fields: { expires_at: 'Expiration must be later than server time.' }
     });
   }
   const result = await reservationsRepository.createReservationAtomic({
@@ -38,7 +38,7 @@ export async function createReservation(
     customerId: input.customerId.trim(),
     quantity: input.quantity,
     expiresAt: expiresAt.toISOString(),
-    idempotencyKey: idempotencyKey.trim(),
+    idempotencyKey: idempotencyKey?.trim() || randomUUID(),
     fingerprint: canonicalFingerprint(input)
   });
   if (result.outcome !== 'created' && result.outcome !== 'replayed') throw errorForOutcome(result.outcome);

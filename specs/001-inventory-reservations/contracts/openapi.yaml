@@ -4,14 +4,14 @@ info:
   version: 1.0.0
   description: Atomic, retry-safe single-item inventory reservations.
 servers:
-  - url: http://localhost:3000
-    description: Local development
+  - url: /
+    description: Current server
 tags:
   - name: Items
   - name: Reservations
   - name: Documentation
 paths:
-  /items:
+  /v1/items:
     post:
       tags:
         - Items
@@ -34,7 +34,7 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "500":
           $ref: "#/components/responses/InternalError"
-  /items/{itemId}:
+  /v1/items/{itemId}:
     get:
       tags:
         - Items
@@ -55,7 +55,7 @@ paths:
           $ref: "#/components/responses/NotFoundError"
         "500":
           $ref: "#/components/responses/InternalError"
-  /reservations:
+  /v1/reservations:
     post:
       tags:
         - Reservations
@@ -94,7 +94,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
           $ref: "#/components/responses/InternalError"
-  /reservations/{reservationId}/confirm:
+  /v1/reservations/{reservationId}/confirm:
     post:
       tags:
         - Reservations
@@ -121,7 +121,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
           $ref: "#/components/responses/InternalError"
-  /reservations/{reservationId}/cancel:
+  /v1/reservations/{reservationId}/cancel:
     post:
       tags:
         - Reservations
@@ -148,7 +148,7 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
           $ref: "#/components/responses/InternalError"
-  /reservations/expire:
+  /v1/maintenance/expire-reservations:
     post:
       tags:
         - Reservations
@@ -217,8 +217,8 @@ components:
     IdempotencyKey:
       name: Idempotency-Key
       in: header
-      required: true
-      description: Unique key for one logical creation request.
+      required: false
+      description: Optional retry key for one logical creation request. The server generates one when omitted.
       schema:
         type: string
         minLength: 1
@@ -228,9 +228,14 @@ components:
       type: object
       additionalProperties: false
       required:
-        - initialQuantity
+        - name
+        - initial_quantity
       properties:
-        initialQuantity:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        initial_quantity:
           type: integer
           format: int64
           minimum: 1
@@ -240,6 +245,7 @@ components:
       additionalProperties: false
       required:
         - id
+        - name
         - totalQuantity
         - availableQuantity
         - heldQuantity
@@ -249,6 +255,10 @@ components:
         id:
           type: string
           format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
         totalQuantity:
           type: integer
           minimum: 1
@@ -268,14 +278,14 @@ components:
       type: object
       additionalProperties: false
       required:
-        - itemId
-        - customerId
+        - item_id
+        - customer_id
         - quantity
       properties:
-        itemId:
+        item_id:
           type: string
           format: uuid
-        customerId:
+        customer_id:
           type: string
           minLength: 1
           maxLength: 255
@@ -284,7 +294,7 @@ components:
           format: int64
           minimum: 1
           maximum: 9007199254740991
-        expiresAt:
+        expires_at:
           type: string
           format: date-time
           description: Must be later than server time; defaults to the configured TTL.

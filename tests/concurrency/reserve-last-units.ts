@@ -6,20 +6,20 @@ async function jsonRequest(path: string, init?: RequestInit): Promise<{ status: 
   return { status: response.status, body: await response.json() };
 }
 
-const createdItem = await jsonRequest('/items', {
-  method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ initialQuantity: 10 })
+const createdItem = await jsonRequest('/v1/items', {
+  method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Concurrency item', initial_quantity: 10 })
 });
 if (createdItem.status !== 201) throw new Error(`Could not create item: ${JSON.stringify(createdItem.body)}`);
 
-const attempts = await Promise.all(Array.from({ length: concurrency }, (_, index) => jsonRequest('/reservations', {
+const attempts = await Promise.all(Array.from({ length: concurrency }, (_, index) => jsonRequest('/v1/reservations', {
   method: 'POST',
   headers: { 'content-type': 'application/json', 'idempotency-key': `contention-${Date.now()}-${index}` },
-  body: JSON.stringify({ itemId: createdItem.body.id, customerId: `customer-${index}`, quantity: 1 })
+  body: JSON.stringify({ item_id: createdItem.body.id, customer_id: `customer-${index}`, quantity: 1 })
 })));
 
 const successes = attempts.filter((result) => result.status === 201);
 const conflicts = attempts.filter((result) => result.status === 409);
-const inventory = await jsonRequest(`/items/${createdItem.body.id}`);
+const inventory = await jsonRequest(`/v1/items/${createdItem.body.id}`);
 console.log(JSON.stringify({ requests: concurrency, successes: successes.length, conflicts: conflicts.length, inventory: inventory.body }, null, 2));
 
 if (successes.length > 10 || inventory.body.availableQuantity < 0 ||

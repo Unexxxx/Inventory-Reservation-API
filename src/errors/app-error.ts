@@ -30,7 +30,7 @@ export function errorForOutcome(outcome: DatabaseOutcome): AppError {
       return new AppError(409, errorCodes.INSUFFICIENT_INVENTORY, 'Requested quantity is not available.');
     case 'invalid_expiration':
       return new AppError(400, errorCodes.VALIDATION_ERROR, 'Request validation failed.', {
-        fields: { expiresAt: 'Expiration must be later than server time.' }
+        fields: { expires_at: 'Expiration must be later than server time.' }
       });
     case 'idempotency_conflict':
       return new AppError(409, errorCodes.IDEMPOTENCY_CONFLICT, 'Idempotency key was already used with different input.');

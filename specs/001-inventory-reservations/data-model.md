@@ -21,6 +21,7 @@ persisted status is cleaned up. All values are whole numbers represented as Post
 | Field | PostgreSQL type | Null | Rules |
 |---|---|---|---|
 | `id` | `uuid` | No | Primary key; default `gen_random_uuid()` |
+| `name` | `varchar(255)` | No | Trimmed; length 1–255 |
 | `total_quantity` | `bigint` | No | `CHECK (total_quantity > 0)`; immutable through this API |
 | `created_at` | `timestamptz` | No | Default `now()` |
 
@@ -105,7 +106,7 @@ Returns the item and its `total_quantity`, `available_quantity`, `held_quantity`
 `confirmed_quantity`, computed in one statement at database time. Returns no row when
 the item does not exist.
 
-### `create_item_atomic(p_total_quantity bigint)`
+### `create_item_atomic(p_name text, p_total_quantity bigint)`
 
 Validates and inserts one item, then returns the same inventory shape as
 `get_item_inventory`. This is the only runtime item-creation write path.
@@ -114,7 +115,7 @@ Validates and inserts one item, then returns the same inventory shape as
 
 Inputs: item ID, customer ID, quantity, expiration, idempotency key, fingerprint.
 
-The service computes the fingerprint from normalized raw caller input. If `expiresAt`
+The service computes the fingerprint from normalized raw caller input. If `expires_at`
 is omitted, the canonical fingerprint value is the literal `DEFAULT_TTL`, not a computed
 timestamp. The effective expiration is calculated once only for first creation and is
 stored on the reservation. A later identical retry therefore keeps the same fingerprint
